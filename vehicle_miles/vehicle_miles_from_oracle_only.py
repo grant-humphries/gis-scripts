@@ -7,13 +7,14 @@ from collections import OrderedDict
 from shapely.geometry import mapping, shape, LineString
 
 pwd_msg = 'enter pwd for db: {0}, user: {1}\n'
-dat_msg = 'enter begin date of service period as m/d/yy:\n'
+date_msg1 = 'enter a summary begin date as m/d/yy, note that a valid'
+date_msg2 = ' date must appear in the \'summary_period\' table:\n'
 
 o_dbname = 'HAWAII'
 o_user = 'tmpublic'
 o_password = raw_input(pwd_msg.format(o_dbname, o_user))
 
-date_str = raw_input(date_msg)
+date_str = raw_input(date_msg1 + date_msg2)
 serv_date = datetime.strptime(date_str, '%m/%d/%y').date()
 path_date = serv_date.strftime('%Y-%m-%d')
 
@@ -31,11 +32,11 @@ def createPatternGeomFromOracle():
 	o_cur = o_conn.cursor()
 
 	q = """SELECT x_coordinate as x, y_coordinate as y, 
-			  route_begin_date as begin_date, route_number as route,
-			  direction, pattern_id as pattern, 
-			  shape_point_distance as seq
-			from shape_point_distance
-			where route_begin_date = :begin_date"""
+		     route_begin_date as begin_date, route_number as route,
+		     direction, pattern_id as pattern, 
+		     shape_point_distance as seq
+		   from shape_point_distance
+		   where route_begin_date = :begin_date"""
 
 	o_cur.execute(q, begin_date=serv_date)
 	field_names = [d[0].lower() for d in o_cur.description]
@@ -109,29 +110,29 @@ def getVolumeUsageModeAttributes():
 	o_cur = o_conn.cursor()
 
 	q = """WITH pct_operated AS (
-		  SELECT c.service_key, p.summary_begin_date,
-		    COUNT(c.calendar_date) / 
-		      (p.summary_end_date - p.summary_begin_date) AS pct
-		  FROM schedule_calendar c, summary_period p
-		  WHERE c.calendar_date BETWEEN
-		    p.summary_begin_date AND p.summary_end_date
-		  GROUP BY c.service_key, p.summary_begin_date, p.summary_end_date)
-
-		SELECT t.trip_begin_date AS begin_date, t.route_number AS route,
-		  t.direction, t.pattern_id AS pattern, SUM(op.pct) AS daily_trips,
-		  COALESCE(st.route_sub_type_description, 'Bus') AS trip_mode, 
-		  r.route_usage AS usage
-		FROM trip t, pct_operated op, route r
-		LEFT JOIN route_sub_type st
-		  ON st.route_sub_type = r.route_sub_type
-		WHERE t.trip_begin_date = :begin_date
-		  AND t.trip_begin_date = op.summary_begin_date
-		  AND t.service_key = op.service_key
-		  AND r.route_begin_date = t.trip_begin_date
-		  AND r.route_number = t.route_number
-		GROUP BY t.route_number, t.direction, t.pattern_id, 
-		  t.trip_begin_date, st.route_sub_type_description,
-		  r.route_usage"""
+		     SELECT c.service_key, p.summary_begin_date,
+		       COUNT(c.calendar_date) / 
+		         (p.summary_end_date - p.summary_begin_date) AS pct
+		     FROM schedule_calendar c, summary_period p
+		     WHERE c.calendar_date BETWEEN
+		       p.summary_begin_date AND p.summary_end_date
+		     GROUP BY c.service_key, p.summary_begin_date, p.summary_end_date)
+  
+		   SELECT t.trip_begin_date AS begin_date, t.route_number AS route,
+		     t.direction, t.pattern_id AS pattern, SUM(op.pct) AS daily_trips,
+		     COALESCE(st.route_sub_type_description, 'Bus') AS trip_mode, 
+		     r.route_usage AS usage
+		   FROM trip t, pct_operated op, route r
+		   LEFT JOIN route_sub_type st
+		     ON st.route_sub_type = r.route_sub_type
+		   WHERE t.trip_begin_date = :begin_date
+		     AND t.trip_begin_date = op.summary_begin_date
+		     AND t.service_key = op.service_key
+		     AND r.route_begin_date = t.trip_begin_date
+		     AND r.route_number = t.route_number
+		   GROUP BY t.route_number, t.direction, t.pattern_id, 
+		     t.trip_begin_date, st.route_sub_type_description,
+		     r.route_usage"""
 
 	o_cur.execute(q, begin_date=serv_date)
 	field_names = [d[0].lower() for d in o_cur.description]
@@ -225,4 +226,3 @@ def getVehicleMilesTraveled(patterns_path):
 createPatternGeomFromOracle()
 clip_path = clipPatternsToCityLimits('Beaverton', True)
 getVehicleMilesTraveled(clip_path)
-
