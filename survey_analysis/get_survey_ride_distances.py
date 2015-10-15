@@ -1,9 +1,5 @@
-import os
-import csv
-import arcpy
-import argparse
-import psycopg2
-import cx_Oracle
+import os, csv, arcpy
+import argparse, psycopg2, cx_Oracle
 from os import path
 from arcpy import da, env, management
 from shapely import geometry

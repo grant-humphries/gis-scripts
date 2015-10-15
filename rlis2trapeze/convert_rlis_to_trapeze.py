@@ -1,7 +1,4 @@
-import os
-import csv
-import fiona
-import shutil
+import os, csv, fiona, shutil
 from os import path
 from sys import stdout
 from shapely.ops import unary_union

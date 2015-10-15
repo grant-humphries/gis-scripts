@@ -1,5 +1,4 @@
-import fiona
-import cx_Oracle
+import fiona, cx_Oracle
 from os import path
 from fiona import crs
 from datetime import datetime
