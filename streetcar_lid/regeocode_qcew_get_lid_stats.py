@@ -1,4 +1,4 @@
-# g.humphries
+# Grant Humphries, 2015
 # python version: 2.7.8
 #--------------------------------
 
