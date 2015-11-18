@@ -18,7 +18,7 @@ project_dir = '//gisstore/gis/PUBLIC/GIS_Projects/eFare_Project'
 subproj_dir = join(project_dir, 'Vendor_Deserts')
 oproj_dir = join(project_dir, 'Vendor_Analysis', 'shp')
 
-rc_vendors = join(oproj_dir, 'ready_credit_vendors_2015_05.shp')
+rc_vendors = join(oproj_dir, 'rc_vendors_ospn_2015_05.shp')
 current_stops = join(subproj_dir, 'shp', 'stops.shp')
 master_stops = join(oproj_dir, 'master_efare_stops.shp')
 desert_gaps = join(subproj_dir, 'shp', 'desert_gaps.shp')
@@ -104,12 +104,12 @@ def addNearestVendorDistance(stops):
 			dist = dist_dict[oid]
 			u_cursor.updateRow((oid, dist))
 
-def generateDesertsFeature(stops):
+def generateDesertsFeature(stops, desert_dist):
 	""""""
 
-	sd_bbox = getPgTableBbox('load.county')
+	b_box = getPgTableBbox('load.county')
 
-	buff_geoms = []
+	stops_buffs = []
 	with fiona.open(stops) as dist_stops:
 		metadata = dist_stops.meta.copy()
 
@@ -118,19 +118,29 @@ def generateDesertsFeature(stops):
 			fields = feat['properties']
 			dist = fields['vend_dist']
 
-			if dist > 5280:
-				buff = geom.buffer(dist)
-				buff_geoms.append(buff)
+			if dist > desert_dist:
+				buff = geom.buffer(desert_dist)
+				stops_buffs.append(buff)
 
-	desert_rings = unary_union(buff_geoms)
-	desert_geom = sd_bbox.difference(desert_rings)
+	desert_area = unary_union(stops_buffs)
+	
+	vendor_buffs = []
+	with fiona.open(rc_vendors) as vendors:
+		for feat in vendors:
+			geom = shape(feat['geometry'])
+			buff = geom.buffer(desert_dist)
+			vendor_buffs.append(buff)
+
+	vendor_area = unary_union(vendor_buffs)
+	desert_trim = desert_area.difference(vendor_area)
+	desert_mask = b_box.difference(desert_trim)
 
 	schema = metadata['schema']
-	schema['geometry'] = desert_geom.geom_type
+	schema['geometry'] = desert_mask.geom_type
 	schema['properties'] = {'id': 'int'}
 
 	with fiona.open(desert_gaps, 'w', **metadata) as gaps_shp:
-		feat = {'geometry': mapping(desert_geom)}
+		feat = {'geometry': mapping(desert_mask)}
 		feat['properties'] = {'id': 1}
 
 		gaps_shp.write(feat)
@@ -185,8 +195,8 @@ def main():
 	user = options.user
 	password = options.password
 
-	getCurrentStops()
-	generateDesertsFeature(master_stops)
+	# getCurrentStops()
+	generateDesertsFeature(master_stops, 5280)
 
 if __name__ == '__main__':
 	main()
