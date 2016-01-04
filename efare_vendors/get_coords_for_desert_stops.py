@@ -1,8 +1,11 @@
 import csv
 from os.path import join
+from functools import partial
 
 import fiona
+import pyproj
 from rtree import index
+from shapely.ops import transform
 from shapely.geometry import shape
 
 home = '//gisstore/gis/PUBLIC/GIS_Projects/eFare_Project'
@@ -46,6 +49,16 @@ def get_desert_stop_loc_info():
     nbo_ix = generate_spatial_index(nbo_hoods)
     t6_ix = generate_spatial_index(t6_block_groups)
 
+    # create object that reprojects oregon state plane geometry to wgs84
+    # pyproj assumes coordinates are meters, but ospn is in feet, thus
+    # the 'preserve_units' parameter is needed here, see link for details:
+    # http://gis.stackexchange.com/questions/10209
+    ospn2wgs84 = partial(
+        pyproj.transform,
+        pyproj.Proj(init='epsg:2913', preserve_units=True),
+        pyproj.Proj(init='epsg:4326')
+    )
+
     with fiona.open(master_stops) as stops:
         for row in stops:
             props = row['properties']
@@ -59,6 +72,10 @@ def get_desert_stop_loc_info():
                 geom = shape(row['geometry'])
                 props['x'] = geom.x
                 props['y'] = geom.y
+
+                geom_4326 = transform(ospn2wgs84, geom)
+                props['lat'] = geom_4326.y
+                props['lon'] = geom_4326.x
 
                 city = find_intersecting_region(
                     geom, cities, cty_ix, 'CITYNAME')
