@@ -12,10 +12,10 @@ import pyproj
 from shapely import ops
 from shapely.geometry import Point
 
-MIN_LON = -122.5658146
-MIN_LAT = 45.4131664
-MAX_LON = -122.5579471
-MAX_LAT = 45.4166018
+MIN_LON = -122.6640272
+MIN_LAT = 45.5059634
+MAX_LON = -122.6627076
+MAX_LAT = 45.5080312
 
 
 def get_images_from_service(token):
@@ -23,20 +23,27 @@ def get_images_from_service(token):
 
     image_dir = 'G:/PUBLIC/GIS_Projects/Aerials/metro_image_service/images'
     photo_url = 'https://gis.oregonmetro.gov/arcgis/rest/services/' \
-                'photo/aerialimage2015early/ImageServer/exportImage?' \
-                'f={0}&bbox={1}&size={2}&token={3}'
+                'photo/aerialimage2015early/ImageServer/exportImage'
 
-    factor = 0.5
+    factor = 0.25
     coords = get_ospn_coords_from_latlon()
     dimensions = (
         coords['max_x'] - coords['min_x'],
         coords['max_y'] - coords['min_y'])
 
-    f = 'json'  # response format
+    rsp_format = 'json'
     bbox = ','.join([str(i) for i in coords.values()])
-    pixel_size = ','.join([str(int(round(i / factor))) for i in dimensions])
+    pixel_dimensions = ','.join(
+        [str(int(round(i / factor))) for i in dimensions])
 
-    rsp = requests.get(photo_url.format(f, bbox, pixel_size, token))
+    params = {
+        'f': rsp_format,
+        'bbox': bbox,
+        'size': pixel_dimensions,
+        'token': token
+    }
+
+    rsp = requests.get(photo_url, params=params)
     json_rsp = rsp.json()
 
     if 'error' in json_rsp:
