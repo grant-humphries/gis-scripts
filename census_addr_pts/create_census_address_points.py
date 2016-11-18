@@ -67,7 +67,11 @@ def create_census_address_points():
 
     # get census tracts and block groups from the postgres database on
     # the map server
-    pg_url = PG_URL.format()
+    pg_url = PG_URL.format(
+        user=pg.user,
+        password=pg.password,
+        host=pg.host,
+        db=pg.dbname)
     engine = create_engine(pg_url)
     bg = get_spatial_table_from_db(engine, Bg, ['geoid'])
     bg_ix = generate_spatial_index(bg)
